@@ -3,4 +3,4 @@ project(bpt)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(bpt main.cpp bplustree.h bplustree.cpp)
+add_executable(bpt main.cpp bplustree.cpp bplustree.h)

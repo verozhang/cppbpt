@@ -1,66 +1,45 @@
+//
+// Created by verozhang on 4/1/19.
+//
+
 #ifndef BPT_BPLUSTREE_H
 #define BPT_BPLUSTREE_H
-
 #include <vector>
-#include <algorithm>
 using namespace std;
 
-class Data{
-public:
+struct Pair{
     int key;
     float value;
-
-    Data(int, float);
-    ~Data();
 };
 
 class BPlusTreeNode{
 public:
+    BPlusTreeNode* parent;
     bool isLeaf;
     int degree;
-
-};
-
-class IntNode: public BPlusTreeNode{
-public:
-    IntNode* parent;
+    BPlusTreeNode* prev;
+    BPlusTreeNode* next;
     vector<int> keys;
-    vector<BPlusTreeNode> children;
+    vector<BPlusTreeNode*> children;
+    vector<Pair*> data;
 
-    IntNode();
-    ~IntNode();
-    Data* search(int);
-    void insert(int, BPlusTreeNode*);
-    IntNode* split();
-};
-
-class LeafNode: public BPlusTreeNode{
-public:
-    IntNode* parent;
-    LeafNode* prev;
-    LeafNode* next;
-    vector<int> keys;
-    vector<Data> children;
-
-    LeafNode();
-    ~LeafNode();
-    Data* search(int);
-    void insert(int, Data*);
-    LeafNode* split();
-
+    BPlusTreeNode();
+    ~BPlusTreeNode();
+    BPlusTreeNode* findLeaf(int);
+    Pair* search(int);
+    void insert(Pair*);
+    BPlusTreeNode* split();
 };
 
 class BPlusTree{
 public:
-    int degree;
     BPlusTreeNode* root;
+    int degree;
 
-    BPlusTree(int);
+    BPlusTree();
     ~BPlusTree();
-    Data* search(int);
-    LeafNode* findNode(int);
-    void insert(Data*);
+    BPlusTreeNode* search(int);
+    void insert(Pair*);
 };
-
 
 #endif //BPT_BPLUSTREE_H
