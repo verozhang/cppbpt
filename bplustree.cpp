@@ -60,7 +60,7 @@ void BPlusTreeNode::insert(Pair* newPair) {
                 }
             }
         }
-        if (this->children.size() > this->degree - 1) {
+        if (this->data.size() == this->degree) {
             this->split();
         }
     }
@@ -100,11 +100,12 @@ BPlusTree::BPlusTree() {
     this->root = new(BPlusTreeNode);
     this->root->isLeaf = true;
     this->degree = 3;
+    this->root->degree = this->degree;
 }
 
 void BPlusTree::insert(Pair* newPair) {
-    //If root is a leaf, create new root, and set current root as its child.
-    if (this->root->isLeaf) {
+    //If root is a leaf and has (m-1) children, create new root, and set current root as its child.
+    if (this->root->isLeaf && this->root->data.size() == degree - 1) {
         auto newNode = new(BPlusTreeNode);
         newNode->isLeaf = false;
         newNode->degree = this->degree;
