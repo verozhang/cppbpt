@@ -5,11 +5,17 @@
 #ifndef BPT_BPLUSTREE_H
 #define BPT_BPLUSTREE_H
 #include <vector>
+#include <algorithm>
 using namespace std;
 
-struct Pair{
+class Pair{
+public:
     int key;
     float value;
+
+    Pair();
+    ~Pair();
+    bool operator<(Pair*);
 };
 
 class BPlusTreeNode{
@@ -25,10 +31,14 @@ public:
 
     BPlusTreeNode();
     ~BPlusTreeNode();
+    bool operator<(BPlusTreeNode*);
     BPlusTreeNode* findLeaf(int);
     Pair* search(int);
     void insert(Pair*);
     BPlusTreeNode* split();
+    void sortKeys();
+    void sortChildren();
+    void sortData();
 };
 
 class BPlusTree{
@@ -38,7 +48,7 @@ public:
 
     BPlusTree();
     ~BPlusTree();
-    BPlusTreeNode* search(int);
+    Pair* search(int);
     void insert(Pair*);
 };
 
