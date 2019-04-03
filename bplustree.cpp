@@ -7,21 +7,8 @@
 Pair::Pair() {}
 Pair::~Pair() {}
 
-bool Pair::operator<(Pair* cmp) {
-    return (key < cmp->key);
-}
-
 BPlusTreeNode::BPlusTreeNode() = default;
 BPlusTreeNode::~BPlusTreeNode() = default;
-
-bool BPlusTreeNode::operator<(BPlusTreeNode* cmp) {
-    if (this->isLeaf) {
-        return (this->data.front() < cmp->data.front());
-    }
-    else {
-        return (this->children.front() < cmp->children.front());
-    }
-}
 
 //Given a key, find which leaf this key should be in.
 BPlusTreeNode* BPlusTreeNode::findLeaf(int key) {
@@ -86,7 +73,7 @@ BPlusTreeNode* BPlusTreeNode::split() {
         this->next = newNode;
         this->parent->children.push_back(newNode);
         //Move half pairs of this node to new node.
-        for (int i=0; i<mid; ++i) {
+        for (int i=0; i<=mid; ++i) {
             newNode->data.push_back(this->data.back());
             this->data.pop_back();
         }
@@ -103,16 +90,31 @@ BPlusTreeNode* BPlusTreeNode::split() {
     return newNode;
 }
 
+bool cmpNodes(BPlusTreeNode* a, BPlusTreeNode* b) {
+    //Search down to first leaf.
+    while (!a->isLeaf) {
+        a = a->children.front();
+        b = b->children.front();
+    }
+    //Compare key of first pair.
+    return (a->data.front()->key < b->data.front()->key);
+
+}
+
 void BPlusTreeNode::sortKeys() {
-    sort(this->keys.begin(), this->keys.end());
+    sort(this->keys.begin(), this->keys.end(), cmpNodes);
 }
 
 void BPlusTreeNode::sortChildren() {
-    sort(this->children.begin(), this->children.end());
+    sort(this->children.begin(), this->children.end(), cmpNodes);
+}
+
+bool cmpPairs(Pair* a, Pair* b) {
+    return (a->key < b->key);
 }
 
 void BPlusTreeNode::sortData() {
-    sort(this->data.begin(), this->data.end());
+    sort(this->data.begin(), this->data.end(), cmpPairs);
 }
 
 BPlusTree::BPlusTree() {

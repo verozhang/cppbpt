@@ -15,7 +15,6 @@ public:
 
     Pair();
     ~Pair();
-    bool operator<(Pair*);
 };
 
 class BPlusTreeNode{
@@ -31,7 +30,6 @@ public:
 
     BPlusTreeNode();
     ~BPlusTreeNode();
-    bool operator<(BPlusTreeNode*);
     BPlusTreeNode* findLeaf(int);
     Pair* search(int);
     void insert(Pair*);
@@ -51,5 +49,8 @@ public:
     Pair* search(int);
     void insert(Pair*);
 };
+
+bool cmpPairs(Pair*, Pair*);
+bool cmpNodes(BPlusTreeNode*, BPlusTreeNode*);
 
 #endif //BPT_BPLUSTREE_H
