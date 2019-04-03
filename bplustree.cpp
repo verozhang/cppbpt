@@ -56,6 +56,9 @@ void BPlusTreeNode::insert(Pair* newPair) {
     //Inserting in a internal node: search for the correct leaf to insert.
     else {
         this->findLeaf(newPair->key)->insert(newPair);
+        if (this->children.front()->children.size() == this->degree + 1) {
+            this->children.front()->split();
+        }
     }
 }
 
@@ -86,6 +89,24 @@ BPlusTreeNode* BPlusTreeNode::split() {
     else {
         //Set new node.
         newNode->isLeaf = false;
+        this->parent->children.push_back(newNode);
+        //Move half keys and children to new node;
+        for (int i=0; i<mid; ++i) {
+            newNode->keys.push_back(this->keys.back());
+            newNode->children.push_back(this->children.back());
+            this->keys.pop_back();
+            this->children.pop_back();
+        }
+        //Always 1 more child than key.
+        newNode->children.push_back(this->children.back());
+        this->children.pop_back();
+        newNode->sortChildren();
+        newNode->sortKeys();
+        //Move mid key to higher level.
+        this->parent->keys.push_back(this->keys.back());
+        this->keys.pop_back();
+        this->parent->sortKeys();
+        this->parent->sortChildren();
     }
     return newNode;
 }
@@ -102,7 +123,7 @@ bool cmpNodes(BPlusTreeNode* a, BPlusTreeNode* b) {
 }
 
 void BPlusTreeNode::sortKeys() {
-    sort(this->keys.begin(), this->keys.end(), cmpNodes);
+    sort(this->keys.begin(), this->keys.end());
 }
 
 void BPlusTreeNode::sortChildren() {
@@ -129,15 +150,24 @@ Pair* BPlusTree::search(int key) {
 }
 
 void BPlusTree::insert(Pair* newPair) {
-    //If root is a leaf and has (m-1) children, create new root, and set current root as its child.
-    if (this->root->isLeaf && this->root->data.size() == degree - 1) {
-        auto newNode = new(BPlusTreeNode);
-        newNode->isLeaf = false;
-        newNode->degree = this->degree;
-        newNode->children.push_back(this->root);
-        this->root->parent = newNode;
-        this->root = newNode;
+    this->grow();
+    this->root->insert(newPair);
+    if (this->root->keys.empty()) {
+        this->shrink();
     }
-    //Start searching from root.
-    return this->root->insert(newPair);
+}
+
+void BPlusTree::grow() {
+    auto newRoot = new(BPlusTreeNode);
+    newRoot->degree = this->degree;
+    newRoot->isLeaf = false;
+    newRoot->children.push_back(this->root);
+    this->root->parent = newRoot;
+    this->root = newRoot;
+}
+
+void BPlusTree::shrink() {
+    BPlusTreeNode* tmp = this->root;
+    this->root = this->root->children.front();
+    free(tmp);
 }

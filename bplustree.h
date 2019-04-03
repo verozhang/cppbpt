@@ -48,6 +48,9 @@ public:
     ~BPlusTree();
     Pair* search(int);
     void insert(Pair*);
+    void grow();//Height +1.
+    void shrink();//Height -1.
+
 };
 
 bool cmpPairs(Pair*, Pair*);
