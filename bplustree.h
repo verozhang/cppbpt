@@ -34,6 +34,7 @@ public:
     Pair* search(int);
     void insert(Pair*);
     BPlusTreeNode* split();
+    void del(int);
     void sortKeys();
     void sortChildren();
     void sortData();
@@ -47,10 +48,11 @@ public:
     BPlusTree();
     ~BPlusTree();
     Pair* search(int);
+    Pair* search(int, int);
     void insert(Pair*);
+    void del(int);
     void grow();//Height +1.
     void shrink();//Height -1.
-
 };
 
 bool cmpPairs(Pair*, Pair*);

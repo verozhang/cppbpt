@@ -4,10 +4,19 @@
 
 #include "bplustree.h"
 
-Pair::Pair() {}
-Pair::~Pair() {}
+Pair::Pair() {
+    this->key = 0;
+    this->value = 0;
+}
+Pair::~Pair() = default;
 
-BPlusTreeNode::BPlusTreeNode() = default;
+BPlusTreeNode::BPlusTreeNode() {
+    this->parent = nullptr;
+    this->isLeaf = true;
+    this->degree = 3;
+    this->prev = nullptr;
+    this->next = nullptr;
+};
 BPlusTreeNode::~BPlusTreeNode() = default;
 
 //Given a key, find which leaf this key should be in.
@@ -27,6 +36,7 @@ BPlusTreeNode* BPlusTreeNode::findLeaf(int key) {
     }
 }
 
+//Given a key, search for it by returning a pair.
 Pair* BPlusTreeNode::search(int key) {
     //Searching in a leaf: search in data and return pointer to pair.
     if (this->isLeaf) {
@@ -44,6 +54,7 @@ Pair* BPlusTreeNode::search(int key) {
     }
 }
 
+//Insert a pair into a node (the subtree rooted at node).
 void BPlusTreeNode::insert(Pair* newPair) {
     //Inserting in a leaf.
     if (this->isLeaf) {
@@ -62,6 +73,7 @@ void BPlusTreeNode::insert(Pair* newPair) {
     }
 }
 
+//Split a node into two. Called when inserting.
 BPlusTreeNode* BPlusTreeNode::split() {
     int mid = this->degree / 2;
     auto newNode = new(BPlusTreeNode);
@@ -93,6 +105,7 @@ BPlusTreeNode* BPlusTreeNode::split() {
         //Move half keys and children to new node;
         for (int i=0; i<mid; ++i) {
             newNode->keys.push_back(this->keys.back());
+            this->children.back()->parent = newNode;
             newNode->children.push_back(this->children.back());
             this->keys.pop_back();
             this->children.pop_back();
@@ -111,6 +124,18 @@ BPlusTreeNode* BPlusTreeNode::split() {
     return newNode;
 }
 
+void BPlusTreeNode::del(int) {
+    //Deleting the 1st pair in
+
+    auto iter = this->data.begin();
+
+
+    while (iter != this->data.end()) {
+
+    }
+}
+
+//Compare 2 nodes with smallest pair in each. Called in BPlusTreeNode::sortChildren
 bool cmpNodes(BPlusTreeNode* a, BPlusTreeNode* b) {
     //Search down to first leaf.
     while (!a->isLeaf) {
@@ -122,18 +147,26 @@ bool cmpNodes(BPlusTreeNode* a, BPlusTreeNode* b) {
 
 }
 
+void del(int key) {
+
+}
+
+//Sort a int node's key list.
 void BPlusTreeNode::sortKeys() {
     sort(this->keys.begin(), this->keys.end());
 }
 
+//Sort a int node's child list.
 void BPlusTreeNode::sortChildren() {
     sort(this->children.begin(), this->children.end(), cmpNodes);
 }
 
+//Compare 2 pairs with key. Called in BPlusTreeNode::sortData.
 bool cmpPairs(Pair* a, Pair* b) {
     return (a->key < b->key);
 }
 
+//Sort a leaf node's data list.
 void BPlusTreeNode::sortData() {
     sort(this->data.begin(), this->data.end(), cmpPairs);
 }
@@ -145,6 +178,8 @@ BPlusTree::BPlusTree() {
     this->root->degree = this->degree;
 }
 
+BPlusTree::~BPlusTree() = default;
+
 Pair* BPlusTree::search(int key) {
     return this->root->search(key);
 }
@@ -154,6 +189,18 @@ void BPlusTree::insert(Pair* newPair) {
     this->root->insert(newPair);
     if (this->root->keys.empty()) {
         this->shrink();
+    }
+}
+
+void BPlusTree::del(int key) {
+    auto targetLeaf = this->root->findLeaf(key);
+    auto targetPair = targetLeaf->search(key);
+    //Not found.
+    if (targetPair == nullptr) {
+        return;
+    }
+    else {
+        targetLeaf->del(key);
     }
 }
 
