@@ -4,7 +4,7 @@
 
 #ifndef BPT_BPLUSTREE_H
 #define BPT_BPLUSTREE_H
-#include <vector>
+#include <deque>
 #include <algorithm>
 using namespace std;
 
@@ -24,9 +24,9 @@ public:
     int degree;
     BPlusTreeNode* prev;
     BPlusTreeNode* next;
-    vector<int> keys;
-    vector<BPlusTreeNode*> children;
-    vector<Pair*> data;
+    deque<int> keys;
+    deque<BPlusTreeNode*> children;
+    deque<Pair*> data;
 
     BPlusTreeNode();
     ~BPlusTreeNode();
@@ -34,6 +34,10 @@ public:
     Pair* search(int);
     void insert(Pair*);
     BPlusTreeNode* split();
+    void lBorrow();
+    void rBorrow();
+    void lMerge();
+    void rMerge();
     void del(int);
     void sortKeys();
     void sortChildren();

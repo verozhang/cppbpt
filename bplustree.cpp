@@ -17,6 +17,7 @@ BPlusTreeNode::BPlusTreeNode() {
     this->prev = nullptr;
     this->next = nullptr;
 };
+
 BPlusTreeNode::~BPlusTreeNode() = default;
 
 //Given a key, find which leaf this key should be in.
@@ -86,6 +87,7 @@ BPlusTreeNode* BPlusTreeNode::split() {
         newNode->prev = this;
         newNode->next = this->next;
         this->next = newNode;
+        newNode->next->prev = newNode;
         this->parent->children.push_back(newNode);
         //Move half pairs of this node to new node.
         for (int i=0; i<=mid; ++i) {
@@ -94,6 +96,9 @@ BPlusTreeNode* BPlusTreeNode::split() {
         }
         newNode->sortData();
         this->parent->keys.push_back(newNode->data.front()->key);
+        if (this->parent->keys.size() == this->degree) {
+            this->parent->split();
+        }
         this->parent->sortKeys();
         this->parent->sortChildren();
     }
@@ -101,6 +106,10 @@ BPlusTreeNode* BPlusTreeNode::split() {
     else {
         //Set new node.
         newNode->isLeaf = false;
+        newNode->prev = this;
+        newNode->next = this->next;
+        this->next = newNode;
+        newNode->next->prev = newNode;
         this->parent->children.push_back(newNode);
         //Move half keys and children to new node;
         for (int i=0; i<mid; ++i) {
@@ -117,6 +126,9 @@ BPlusTreeNode* BPlusTreeNode::split() {
         newNode->sortKeys();
         //Move mid key to higher level.
         this->parent->keys.push_back(this->keys.back());
+        if (this->parent->keys.size() == this->degree) {
+            this->parent->split();
+        }
         this->keys.pop_back();
         this->parent->sortKeys();
         this->parent->sortChildren();
@@ -124,15 +136,114 @@ BPlusTreeNode* BPlusTreeNode::split() {
     return newNode;
 }
 
-void BPlusTreeNode::del(int) {
-    //Deleting the 1st pair in
+void BPlusTreeNode::lBorrow() {
+    //Leaf borrowing from left sibling.
+    if (this->isLeaf) {
+        //Borrow a pair.
+        this->data.push_front(this->prev->data.back());
+        this->prev->data.pop_back();
+        //Renew key in parent node.
+        this->parent->keys.front() = this->data.front()->key;
+    }
+    //Int node borrowing from left sibling
+    else {
+        //Take a key from parent.
+        this->keys.push_front(this->parent->keys.back());
+        this->parent->keys.pop_back();
+        //Parent take a key from left sibling.
+        this->parent->keys.push_front(this->prev->keys.back());
+        this->prev->keys.pop_back();
+        //Move child accordingly.
+        this->children.push_front(this->prev->children.back());
+        this->prev->children.pop_back();
+    }
+}
 
-    auto iter = this->data.begin();
+void BPlusTreeNode::rBorrow() {
+    //Leaf borrowing from right sibling.
+    if (this->isLeaf) {
+        //Borrow a pair from right(next).
+        this->data.push_back(this->next->data.front());
+        this->next->data.pop_front();
+        //Renew key in parent node.
+        this->next->parent->keys.front() = this->next->data.front()->key;
+    }
+    //Int node borrowing from right sibling.
+    else {
+        this->keys.push_back(this->parent->keys.front());
+        this->parent->keys.pop_front();
+        this->parent->keys.push_back(this->next->keys.front());
+        this->next->keys.pop_front();
+        this->children.push_back(this->next->children.front());
+        this->next->children.pop_back();
+    }
 
+}
 
-    while (iter != this->data.end()) {
+void BPlusTreeNode::lMerge() {
+    //Leaf merging: combine data and delete in-between key in parent.
+    if (this->isLeaf) {
+        this->prev->data.insert(this->prev->data.end(), this->data.begin(), this->data.end());
+        this->parent->del(this->data.front()->key);
+    }
+    //Int node merging.
+    else {
 
     }
+    //Maintain prev & next.
+    this->prev->next = this->next;
+    this->next->prev = this->prev;
+
+    free(this);
+}
+
+void BPlusTreeNode::rMerge() {
+    //Leaf merging: combine data and delete in-between key in parent.
+    if (this->isLeaf) {
+        this->data.insert(this->data.end(), this->next->data.begin(), this->next->data.end());
+        this->parent->del(this->next->data.front()->key);
+    }
+    //Int node merging.
+    else {
+
+    }
+    //Maintain prev & next.
+    this->next->next->prev = this;
+    this->next = this->next->next;
+
+    free(this->next);
+}
+
+void BPlusTreeNode::del(int key) {
+    int lowerBound = (this->degree - 1) / 2 + 1;
+    if (this->isLeaf) {
+        auto delPair = this->search(key);
+        for (auto iter = this->data.begin(); iter != this->data.end(); ++iter) {
+            if (*iter == delPair) {
+                this->data.erase(iter);
+            }
+        }
+        //Deficient. Try to borrow first, del higher level later.
+        if (this->data.size() < lowerBound) {
+            //If left is a sibling and has extra pair.
+            if ((this->prev->parent == this->parent) && (this->prev->data.size() > lowerBound)) {
+                this->lBorrow();
+            }
+            //If right is a sibling and has extra pair.
+            else if ((this->next->parent == this->parent) && (this->next->data.size() > lowerBound)) {
+                this->rBorrow();
+            }
+
+            else {
+
+            }
+        }
+
+    }
+    else {
+
+    }
+
 }
 
 //Compare 2 nodes with smallest pair in each. Called in BPlusTreeNode::sortChildren
@@ -144,11 +255,6 @@ bool cmpNodes(BPlusTreeNode* a, BPlusTreeNode* b) {
     }
     //Compare key of first pair.
     return (a->data.front()->key < b->data.front()->key);
-
-}
-
-void del(int key) {
-
 }
 
 //Sort a int node's key list.
@@ -199,6 +305,7 @@ void BPlusTree::del(int key) {
     if (targetPair == nullptr) {
         return;
     }
+    //Start deleting from leaf and do a bottom-up maintenance.
     else {
         targetLeaf->del(key);
     }

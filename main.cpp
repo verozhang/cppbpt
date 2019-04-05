@@ -29,7 +29,7 @@ int main() {
     newPair6->key = 6;
     newPair6->value = 3;
     newTree->insert(newPair6);
-    /*auto newPair7 = new(Pair);
+    auto newPair7 = new(Pair);
     newPair7->key = 7;
     newPair7->value = 3;
     newTree->insert(newPair7);
@@ -49,6 +49,6 @@ int main() {
     newPair11->key = 11;
     newPair11->value = 3;
     newTree->insert(newPair11);
-*/
+
     cout<<"Hello world!";
 }
