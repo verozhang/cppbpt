@@ -25,7 +25,8 @@ int main() {
     newPair5->key = 5;
     newPair5->value = 3;
     newTree->insert(newPair5);
-    auto newPair6 = new(Pair);
+    newTree->del(2);
+    /*auto newPair6 = new(Pair);
     newPair6->key = 6;
     newPair6->value = 3;
     newTree->insert(newPair6);
@@ -48,7 +49,6 @@ int main() {
     auto newPair11 = new(Pair);
     newPair11->key = 11;
     newPair11->value = 3;
-    newTree->insert(newPair11);
-
+    newTree->insert(newPair11);*/
     cout<<"Hello world!";
 }

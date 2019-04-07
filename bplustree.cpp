@@ -78,6 +78,7 @@ void BPlusTreeNode::insert(Pair* newPair) {
 BPlusTreeNode* BPlusTreeNode::split() {
     int mid = this->degree / 2;
     auto newNode = new(BPlusTreeNode);
+    newNode->tree = this->tree;
     newNode->parent = this->parent;
     newNode->degree = this->degree;
     //Split a leaf.
@@ -87,7 +88,9 @@ BPlusTreeNode* BPlusTreeNode::split() {
         newNode->prev = this;
         newNode->next = this->next;
         this->next = newNode;
-        newNode->next->prev = newNode;
+        if (newNode->next != nullptr) {
+            newNode->next->prev = newNode;
+        }
         this->parent->children.push_back(newNode);
         //Move half pairs of this node to new node.
         for (int i=0; i<=mid; ++i) {
@@ -109,7 +112,9 @@ BPlusTreeNode* BPlusTreeNode::split() {
         newNode->prev = this;
         newNode->next = this->next;
         this->next = newNode;
-        newNode->next->prev = newNode;
+        if (newNode->next != nullptr) {
+            newNode->next->prev = newNode;
+        }
         this->parent->children.push_back(newNode);
         //Move half keys and children to new node;
         for (int i=0; i<mid; ++i) {
@@ -121,6 +126,7 @@ BPlusTreeNode* BPlusTreeNode::split() {
         }
         //Always 1 more child than key.
         newNode->children.push_back(this->children.back());
+        this->children.back()->parent = newNode;
         this->children.pop_back();
         newNode->sortChildren();
         newNode->sortKeys();
@@ -134,6 +140,29 @@ BPlusTreeNode* BPlusTreeNode::split() {
         this->parent->sortChildren();
     }
     return newNode;
+}
+
+bool BPlusTreeNode::isDeficient() {
+    //Root can have 2 children.
+    if (this->tree->root == this) {
+        //Leaf root means only 1 node. Never deficient.
+        if (this->isLeaf) {
+            return false;
+        }
+        //Int root is deficient when only having 1 child.
+        else {
+            return (this->children.size() < 2);
+        }
+    }
+    else {
+        //Leaf deficient when
+        if (this->isLeaf) {
+            return this->data.size() < ((this->degree + 1) / 2 - 1);
+        }
+        else {
+            return this->children.size() < ((this->degree + 1) / 2 - 1);
+        }
+    }
 }
 
 void BPlusTreeNode::lBorrow() {
@@ -177,7 +206,6 @@ void BPlusTreeNode::rBorrow() {
         this->children.push_back(this->next->children.front());
         this->next->children.pop_back();
     }
-
 }
 
 void BPlusTreeNode::lMerge() {
@@ -185,63 +213,139 @@ void BPlusTreeNode::lMerge() {
     if (this->isLeaf) {
         this->prev->data.insert(this->prev->data.end(), this->data.begin(), this->data.end());
         this->parent->del(this->data.front()->key);
+        this->prev->next = this->next;
+        if (this->next != nullptr) {
+            this->next->prev = this->prev;
+        }
+        free(this);
     }
     //Int node merging.
     else {
-
+        //Find corresponding in-between key.
+        int findKey = 0;
+        for (int i=0; i<this->parent->keys.size(); ++i) {
+            if (this->parent->keys[i] > this->prev->keys.back()) {
+                findKey = this->parent->keys[i];
+                this->prev->keys.push_back(findKey);
+                break;
+            }
+        }
+        this->prev->keys.insert(this->prev->keys.end(), this->keys.begin(), this->keys.end());
+        this->prev->children.insert(this->prev->children.end(), this->children.begin(), this->children.end());
+        this->parent->del(findKey);
+        this->prev->next = this->next;
+        if (this->next != nullptr) {
+            this->next->prev = this->prev;
+        }
+        free(this);
     }
-    //Maintain prev & next.
-    this->prev->next = this->next;
-    this->next->prev = this->prev;
-
-    free(this);
 }
 
 void BPlusTreeNode::rMerge() {
     //Leaf merging: combine data and delete in-between key in parent.
     if (this->isLeaf) {
-        this->data.insert(this->data.end(), this->next->data.begin(), this->next->data.end());
+        this->next->data.insert(this->next->data.begin(), this->data.begin(), this->data.end());
         this->parent->del(this->next->data.front()->key);
+        this->next->next->prev = this;
+        this->next = this->next->next;
+        free(this);
     }
     //Int node merging.
     else {
-
+        //Find corresponding in-between key.
+        int findKey = 0;
+        for (int i=0; i<this->parent->keys.size(); ++i) {
+            if (this->parent->keys[i] > this->next->keys.front()) {
+                findKey = this->parent->keys[i-1];
+                this->next->keys.push_front((findKey));
+            }
+        }
+        this->next->keys.insert(this->next->keys.begin(), this->keys.begin(), this->keys.end());
+        this->next->children.insert(this->next->children.begin(), this->children.begin(), this->children.end());
+        this->parent->del(findKey);
+        this->next->prev = this->prev;
+        if (this->prev != nullptr) {
+            this->prev->next = this->next;
+        }
+        free(this);
     }
-    //Maintain prev & next.
-    this->next->next->prev = this;
-    this->next = this->next->next;
+}
 
-    free(this->next);
+void BPlusTreeNode::rootDel() {
+    this->tree->root = this->children.front();
+    free(this);
 }
 
 void BPlusTreeNode::del(int key) {
-    int lowerBound = (this->degree - 1) / 2 + 1;
+    int lowerBound = (this->degree - 1) / 2;
+    //Delete in a leaf.
     if (this->isLeaf) {
-        auto delPair = this->search(key);
-        for (auto iter = this->data.begin(); iter != this->data.end(); ++iter) {
-            if (*iter == delPair) {
-                this->data.erase(iter);
+        for (int i=0; i<this->data.size(); ++i) {
+            if (this->data[i]->key == key) {
+                this->data.erase(this->data.begin() + i);
+                break;
             }
         }
         //Deficient. Try to borrow first, del higher level later.
-        if (this->data.size() < lowerBound) {
+        if (this->isDeficient()) {
             //If left is a sibling and has extra pair.
-            if ((this->prev->parent == this->parent) && (this->prev->data.size() > lowerBound)) {
+            if ((this->prev != nullptr) && (this->prev->parent == this->parent) && (this->prev->data.size() > lowerBound)) {
                 this->lBorrow();
             }
             //If right is a sibling and has extra pair.
-            else if ((this->next->parent == this->parent) && (this->next->data.size() > lowerBound)) {
+            else if ((this->next != nullptr) && (this->next->parent == this->parent) && (this->next->data.size() > lowerBound)) {
                 this->rBorrow();
             }
-
+            //Try to merge with left. If left exists and is sibling.
+            else if ((this->prev != nullptr) && (this->prev->parent == this->parent)) {
+                this->lMerge();
+            }
+            //Try to merge with right
+            else if ((this->next != nullptr) && (this->next->parent == this->parent)){
+                this->rMerge();
+            }
+            //Deficient root (2-level tree only).
+            else if (this->parent != this->tree->root){
+                this->rootDel();
+            }
+            //Delete parent to make it deficient as well.
             else {
-
+                this->parent->del(key);
             }
         }
-
     }
+    //Delete in int node. Called only when children merging.
     else {
-
+        for (int i=0; i<this->keys.size(); ++i) {
+            if (this->keys[i] == key) {
+                this->keys.erase(this->keys.begin() + i);
+                break;
+            }
+        }
+        //Deficient.
+        if (this->isDeficient()) {
+            if ((this->prev != nullptr) && (this->prev->parent == this->parent) && (this->prev->data.size() > lowerBound)) {
+                this->lBorrow();
+            }
+                //If right is a sibling and has extra pair.
+            else if ((this->next != nullptr) && (this->next->parent == this->parent) && (this->next->data.size() > lowerBound)) {
+                this->rBorrow();
+            }
+                //Try to merge with left. If left exists and is sibling.
+            else if ((this->prev != nullptr) && (this->prev->parent == this->parent)) {
+                this->lMerge();
+            }
+                //Try to merge with right
+            else if ((this->next != nullptr) && (this->next->parent == this->parent)){
+                this->rMerge();
+            }
+            else if (this->parent == nullptr){
+                this->rootDel();
+            }
+            else {
+                this->parent->del(key);
+            }
+        }
     }
 
 }
@@ -280,6 +384,7 @@ void BPlusTreeNode::sortData() {
 BPlusTree::BPlusTree() {
     this->root = new(BPlusTreeNode);
     this->root->isLeaf = true;
+    this->root->tree = this;
     this->degree = 3;
     this->root->degree = this->degree;
 }
@@ -289,6 +394,14 @@ BPlusTree::~BPlusTree() = default;
 Pair* BPlusTree::search(int key) {
     return this->root->search(key);
 }
+
+deque<Pair*>* BPlusTree::rangeSearch(int left, int right) {
+    BPlusTreeNode* lLeaf = this->root->findLeaf(left);
+    BPlusTreeNode* rLeaf = this->root->findLeaf(right);
+    auto result = new(deque<Pair*>);
+    return result;
+}
+
 
 void BPlusTree::insert(Pair* newPair) {
     this->grow();
@@ -313,6 +426,7 @@ void BPlusTree::del(int key) {
 
 void BPlusTree::grow() {
     auto newRoot = new(BPlusTreeNode);
+    newRoot->tree = this;
     newRoot->degree = this->degree;
     newRoot->isLeaf = false;
     newRoot->children.push_back(this->root);

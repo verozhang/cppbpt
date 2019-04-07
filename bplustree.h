@@ -8,6 +8,7 @@
 #include <algorithm>
 using namespace std;
 
+class BPlusTree;
 class Pair{
 public:
     int key;
@@ -19,6 +20,7 @@ public:
 
 class BPlusTreeNode{
 public:
+    BPlusTree* tree;
     BPlusTreeNode* parent;
     bool isLeaf;
     int degree;
@@ -34,10 +36,12 @@ public:
     Pair* search(int);
     void insert(Pair*);
     BPlusTreeNode* split();
+    bool isDeficient();
     void lBorrow();
     void rBorrow();
     void lMerge();
     void rMerge();
+    void rootDel();
     void del(int);
     void sortKeys();
     void sortChildren();
@@ -52,7 +56,7 @@ public:
     BPlusTree();
     ~BPlusTree();
     Pair* search(int);
-    Pair* search(int, int);
+    deque<Pair*>* rangeSearch(int, int);
     void insert(Pair*);
     void del(int);
     void grow();//Height +1.
