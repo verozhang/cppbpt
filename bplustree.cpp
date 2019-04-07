@@ -11,6 +11,7 @@ Pair::Pair() {
 Pair::~Pair() = default;
 
 BPlusTreeNode::BPlusTreeNode() {
+    this->tree = nullptr;
     this->parent = nullptr;
     this->isLeaf = true;
     this->degree = 3;
@@ -26,7 +27,7 @@ BPlusTreeNode* BPlusTreeNode::findLeaf(int key) {
     if (this->isLeaf) {
         return this;
     }
-    //Not a leaf. Search in the
+    //Not a leaf. Search in children.
     else {
         for (int i=0; i<this->keys.size(); ++i) {
             if (key < this->keys[i]) {
@@ -99,11 +100,12 @@ BPlusTreeNode* BPlusTreeNode::split() {
         }
         newNode->sortData();
         this->parent->keys.push_back(newNode->data.front()->key);
+        this->parent->sortKeys();
+        this->parent->sortChildren();
         if (this->parent->keys.size() == this->degree) {
             this->parent->split();
         }
-        this->parent->sortKeys();
-        this->parent->sortChildren();
+
     }
     //Split an internal node.
     else {
@@ -172,7 +174,14 @@ void BPlusTreeNode::lBorrow() {
         this->data.push_front(this->prev->data.back());
         this->prev->data.pop_back();
         //Renew key in parent node.
-        this->parent->keys.front() = this->data.front()->key;
+        int findPos = 0;
+        for (int i=0; i<this->parent->children.size(); ++i) {
+            if (this->parent->children[i] == this) {
+                findPos = i;
+                break;
+            }
+        }
+        this->parent->keys[findPos-1] = this->data.front()->key;
     }
     //Int node borrowing from left sibling
     else {
@@ -195,7 +204,17 @@ void BPlusTreeNode::rBorrow() {
         this->data.push_back(this->next->data.front());
         this->next->data.pop_front();
         //Renew key in parent node.
-        this->next->parent->keys.front() = this->next->data.front()->key;
+        int findPos = 0;
+        for (int i=0; i<this->parent->children.size(); ++i) {
+            if (this->parent->children[i] == this) {
+                findPos = i;
+                break;
+            }
+        }
+        if (findPos != 0) {
+            this->parent->keys[findPos-1] = this->data.front()->key;
+        }
+            this->parent->keys[findPos] = this->next->data.front()->key;
     }
     //Int node borrowing from right sibling.
     else {
@@ -294,12 +313,11 @@ void BPlusTreeNode::rMerge() {
 }
 
 void BPlusTreeNode::rootDel() {
-    if (!this->children.front()->keys.empty()) {
-        this->tree->root = this->children.front();
+    this->tree->root = this->tree->root->children.front();
+    for (int i=0; i<this->tree->root->children.size(); ++i) {
+        this->tree->root->children[i]->parent = this->tree->root;
     }
-    else {
-        this->tree->root = this->children.back();
-    }
+    this->tree->root->parent = nullptr;
     free(this);
 }
 
@@ -425,7 +443,49 @@ Pair* BPlusTree::search(int key) {
 deque<Pair*>* BPlusTree::rangeSearch(int left, int right) {
     BPlusTreeNode* lLeaf = this->root->findLeaf(left);
     BPlusTreeNode* rLeaf = this->root->findLeaf(right);
+    Pair* lPair = lLeaf->data.front();
+    Pair* rPair = rLeaf->data.back();
     auto result = new(deque<Pair*>);
+    //Find two endpoints.
+    int i = 0, lPos = 0, rPos = 0;
+    while (i < lLeaf->data.size()) {
+        if (lLeaf->data[i]->key >= left) {
+            lPos = i;
+            lPair = lLeaf->data[lPos];
+            break;
+        }
+        else {
+            ++i;
+        }
+    }
+    i = rLeaf->data.size() - 1;
+    while (i > -1) {
+        if (rLeaf->data[i]->key <= right) {
+            rPos = i;
+            rPair = rLeaf->data[rPos];
+            break;
+        }
+        else {
+            --i;
+        }
+    }
+    //Push search result in deque.
+    BPlusTreeNode* curNode = lLeaf;
+    Pair* curPair = lPair;
+    int curPos = lPos;
+    while (curPair != rPair) {
+        result->push_back(curPair);
+        if (curPair != curNode->data.back()) {
+            ++curPos;
+            curPair = curNode->data[curPos];
+        }
+        else {
+            curNode = curNode->next;
+            curPos = 0;
+            curPair = curNode->data.front();
+        }
+    }
+    result->push_back(curPair);
     return result;
 }
 
@@ -464,5 +524,6 @@ void BPlusTree::grow() {
 void BPlusTree::shrink() {
     BPlusTreeNode* tmp = this->root;
     this->root = this->root->children.front();
+    this->root->parent = nullptr;
     free(tmp);
 }
