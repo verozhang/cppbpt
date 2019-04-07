@@ -25,7 +25,8 @@ int main() {
     newPair5->key = 5;
     newPair5->value = 3;
     newTree->insert(newPair5);
-    newTree->del(2);
+    newTree->del(5);
+    newTree->del(3);
     /*auto newPair6 = new(Pair);
     newPair6->key = 6;
     newPair6->value = 3;

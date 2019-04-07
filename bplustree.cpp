@@ -149,9 +149,9 @@ bool BPlusTreeNode::isDeficient() {
         if (this->isLeaf) {
             return false;
         }
-        //Int root is deficient when only having 1 child.
+        //Int root is deficient when only having 1 child and no key.
         else {
-            return (this->children.size() < 2);
+            return (this->keys.empty());
         }
     }
     else {
@@ -160,7 +160,7 @@ bool BPlusTreeNode::isDeficient() {
             return this->data.size() < ((this->degree + 1) / 2 - 1);
         }
         else {
-            return this->children.size() < ((this->degree + 1) / 2 - 1);
+            return this->keys.size() < ((this->degree + 1) / 2);
         }
     }
 }
@@ -212,31 +212,40 @@ void BPlusTreeNode::lMerge() {
     //Leaf merging: combine data and delete in-between key in parent.
     if (this->isLeaf) {
         this->prev->data.insert(this->prev->data.end(), this->data.begin(), this->data.end());
-        this->parent->del(this->data.front()->key);
         this->prev->next = this->next;
         if (this->next != nullptr) {
             this->next->prev = this->prev;
         }
+        for (int i=0; i<this->parent->children.size(); ++i) {
+            if (this->parent->children[i] == this) {
+                this->parent->children.erase(this->parent->children.begin() + i);
+                break;
+            }
+        }
+        this->parent->del(this->data.front()->key);
         free(this);
     }
     //Int node merging.
     else {
         //Find corresponding in-between key.
-        int findKey = 0;
+        int findKey = this->parent->keys.back();
+        int findPos = this->parent->keys.size() - 1;
         for (int i=0; i<this->parent->keys.size(); ++i) {
             if (this->parent->keys[i] > this->prev->keys.back()) {
                 findKey = this->parent->keys[i];
-                this->prev->keys.push_back(findKey);
+                findPos = i;
                 break;
             }
         }
+        this->prev->keys.push_back(findKey);
+        this->parent->children.erase(this->parent->children.begin() + findPos + 1);
         this->prev->keys.insert(this->prev->keys.end(), this->keys.begin(), this->keys.end());
         this->prev->children.insert(this->prev->children.end(), this->children.begin(), this->children.end());
-        this->parent->del(findKey);
         this->prev->next = this->next;
         if (this->next != nullptr) {
             this->next->prev = this->prev;
         }
+        this->parent->del(findKey);
         free(this);
     }
 }
@@ -245,34 +254,52 @@ void BPlusTreeNode::rMerge() {
     //Leaf merging: combine data and delete in-between key in parent.
     if (this->isLeaf) {
         this->next->data.insert(this->next->data.begin(), this->data.begin(), this->data.end());
+        this->next->prev = this->prev;
+        if (this->prev != nullptr) {
+            this->prev->next = this->next;
+        }
+        for (int i=0; i<this->parent->children.size(); ++i) {
+            if (this->parent->children[i] == this) {
+                this->parent->children.erase(this->parent->children.begin() + i);
+                break;
+            }
+        }
         this->parent->del(this->next->data.front()->key);
-        this->next->next->prev = this;
-        this->next = this->next->next;
         free(this);
     }
     //Int node merging.
     else {
         //Find corresponding in-between key.
-        int findKey = 0;
+        int findKey = this->parent->keys.back();
+        int findPos = this->parent->keys.size() - 1;
         for (int i=0; i<this->parent->keys.size(); ++i) {
             if (this->parent->keys[i] > this->next->keys.front()) {
                 findKey = this->parent->keys[i-1];
-                this->next->keys.push_front((findKey));
+                findPos = i;
+                break;
             }
         }
+        this->next->keys.push_front(findKey);
+        this->parent->children.erase(this->parent->children.begin() + findPos);
         this->next->keys.insert(this->next->keys.begin(), this->keys.begin(), this->keys.end());
         this->next->children.insert(this->next->children.begin(), this->children.begin(), this->children.end());
-        this->parent->del(findKey);
         this->next->prev = this->prev;
         if (this->prev != nullptr) {
             this->prev->next = this->next;
         }
+
+        this->parent->del(findKey);
         free(this);
     }
 }
 
 void BPlusTreeNode::rootDel() {
-    this->tree->root = this->children.front();
+    if (!this->children.front()->keys.empty()) {
+        this->tree->root = this->children.front();
+    }
+    else {
+        this->tree->root = this->children.back();
+    }
     free(this);
 }
 
